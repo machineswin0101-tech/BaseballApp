@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Baseball">
+<title>⚾ Baseball Scorekeeper</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#ffffff;--bg2:#f5f5f7;--bg3:#ebebed;
+    --text:#1c1c1e;--text2:#636366;--text3:#aeaeb2;
+    --border:#d1d1d6;--border2:#c7c7cc;
+    --blue-bg:#e8f1fb;--blue-text:#0a5db5;--blue-border:#a3c4f5;
+    --green-bg:#e8f5ec;--green-text:#1a7a38;--green-border:#a3d9b1;
+    --red-bg:#fce8e8;--red-text:#c0392b;--red-border:#f5a3a3;
+    --orange-bg:#fef3e2;--orange-text:#b06000;--orange-border:#fcd490;
+    --radius:10px;--radius-sm:7px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+      --text:#ffffff;--text2:#ebebf5cc;--text3:#ebebf599;
+      --border:#38383a;--border2:#48484a;
+      --blue-bg:#0a2a4a;--blue-text:#4da3ff;--blue-border:#1a5080;
+      --green-bg:#0a2a15;--green-text:#4cd964;--green-border:#1a5030;
+      --red-bg:#2a0a0a;--red-text:#ff6b6b;--red-border:#501a1a;
+      --orange-bg:#2a1a00;--orange-text:#ffb340;--orange-border:#503000;
+    }
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;font-size:15px;background:var(--bg2);color:var(--text);min-height:100vh;overscroll-behavior:none}
+  .app{max-width:500px;margin:0 auto;min-height:100vh;background:var(--bg2)}
+  /* Header */
+  .hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 14px 8px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
+  .hdr-title{font-size:17px;font-weight:600;letter-spacing:-.3px}
+  .tabs{display:flex;gap:4px}
+  .tab{padding:5px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;cursor:pointer;background:var(--bg2);color:var(--text2);font-weight:500}
+  .tab.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue-border)}
+  /* Cards */
+  .card{background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);margin:10px 12px;padding:13px 14px}
+  .card-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  /* Score strip */
+  .score-strip{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:10px 12px 0}
+  .team-score{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
+  .team-score.batting{border-color:var(--blue-border);border-width:2px;background:var(--blue-bg)}
+  .team-name-disp{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+  .team-runs{font-size:36px;font-weight:700;line-height:1;margin:2px 0}
+  .vs-box{text-align:center}
+  .inning-num{font-size:18px;font-weight:700}
+  .inning-half{font-size:11px;color:var(--text2);margin-top:1px}
+  /* Toggle */
+  .toggle-team{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
+  .toggle-team button{flex:1;padding:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;background:var(--bg2);color:var(--text2)}
+  .toggle-team button.active{background:var(--blue-bg);color:var(--blue-text)}
+  /* Count dots */
+  .count-section{display:flex;gap:10px;align-items:flex-start}
+  .counts-col{flex:1}
+  .count-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .count-label{font-size:12px;color:var(--text2);font-weight:500;width:52px}
+  .dots{display:flex;gap:5px}
+  .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);background:var(--bg2);cursor:pointer;transition:all .15s}
+  .dot.ball{background:#1a7a38;border-color:#4cd964}
+  .dot.strike{background:#c0392b;border-color:#ff6b6b}
+  .dot.out{background:#636366;border-color:#aeaeb2}
+  /* Bases diamond */
+  .diamond-wrap{display:flex;flex-direction:column;align-items:center}
+  .bases{position:relative;width:110px;height:110px}
+  .base{position:absolute;width:26px;height:26px;border:2px solid var(--border2);transform:rotate(45deg);background:var(--bg2);cursor:pointer;transition:all .15s}
+  .base.on{background:#b06000;border-color:#ffb340}
+  .b1{right:2px;top:50%;margin-top:-13px}
+  .b2{top:2px;left:50%;margin-left:-13px}
+  .b3{left:2px;top:50%;margin-top:-13px}
+  .home-base{position:absolute;bottom:2px;left:50%;margin-left:-13px;width:26px;height:26px;border:2px solid var(--border2);background:var(--bg2);cursor:pointer;transition:all .15s}
+  .home-base.scored-flash{background:var(--green-bg);border-color:var(--green-border)}
+  .base-hint{font-size:9px;color:var(--text3);text-align:center;margin-top:3px;line-height:1.3}
+  /* Current batter */
+  .curr-batter-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm)}
+  .curr-batter-label{font-size:11px;color:var(--text2);font-weight:500}
+  .curr-batter-name{font-size:14px;font-weight:600}
+  /* Action buttons */
+  .action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+  .abtn{padding:10px 4px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;text-align:center;background:var(--bg2);color:var(--text)}
+  .abtn.hit{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border)}
+  .abtn.out{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
+  .abtn.walk{background:var(--orange-bg);color:var(--orange-text);border-color:var(--orange-border)}
+  /* Quick actions */
+  .quick-row{display:flex;gap:6px;flex-wrap:wrap}
+  .btn{padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;background:var(--bg2);color:var(--text)}
+  .btn-primary{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue-border)}
+  .btn-success{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border)}
+  .btn-danger{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
+  .btn-warning{background:var(--orange-bg);color:var(--orange-text);border-color:var(--orange-border)}
+  .btn-sm{padding:5px 11px;font-size:12px}
+  .btn-xs{padding:3px 8px;font-size:11px}
+  .btn-count{padding:14px 4px;border-radius:var(--radius);border:1.5px solid;cursor:pointer;font-size:16px;font-weight:600;text-align:center;min-height:52px;width:100%}
+  .btn-count-ball{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border)}
+  .btn-count-strike{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
+  .btn-count-out{background:var(--bg2);color:var(--text);border-color:var(--border2)}
+  /* PA log */
+  .pa-log{max-height:150px;overflow-y:auto}
+  .pa-entry{font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:6px}
+  .pa-entry:last-child{border-bottom:none}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .pill-hit{background:var(--green-bg);color:var(--green-text)}
+  .pill-out{background:var(--red-bg);color:var(--red-text)}
+  .pill-bb{background:var(--orange-bg);color:var(--orange-text)}
+  /* Lineup */
+  .lineup-row{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid var(--border)}
+  .lineup-row:last-child{border-bottom:none}
+  .lineup-row.active-batter{background:var(--blue-bg);margin:0 -14px;padding:7px 14px;border-radius:var(--radius-sm)}
+  .batter-num{width:20px;font-size:12px;color:var(--text2);text-align:center;font-weight:600}
+  .batter-name{flex:1;font-size:14px;font-weight:500}
+  .pos-select{width:44px;padding:3px 2px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);font-size:12px;text-align:center}
+  .batter-stat{font-size:11px;color:var(--text2);width:36px;text-align:right}
+  .name-input{flex:1;font-size:14px;font-weight:500;padding:3px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text);min-width:0}
+  .name-input:focus{border-color:var(--blue-border);background:var(--bg2);outline:none}
+  .name-input::placeholder{color:var(--text3)}
+  /* Input */
+  .input-row{display:flex;gap:7px;margin-bottom:8px}
+  input[type=text],input[type=email],select.full{flex:1;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);font-size:15px}
+  input:focus,select:focus{outline:none;border-color:var(--blue-border)}
+  /* Box score */
+  .box-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .box-table{border-collapse:collapse;font-size:12px;min-width:100%}
+  .box-table th,.box-table td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap}
+  .box-table th{color:var(--text2);font-weight:600;font-size:11px}
+  .box-table td:first-child,.box-table th:first-child{text-align:left;font-weight:600;padding-left:0}
+  .box-table td.active-inn{background:var(--blue-bg);color:var(--blue-text);font-weight:600}
+  .box-table td.total-col{font-weight:700;background:var(--bg2)}
+  /* Stats table */
+  .stats-table{border-collapse:collapse;font-size:12px;width:100%}
+  .stats-table th,.stats-table td{padding:5px 4px;text-align:center;border-bottom:1px solid var(--border)}
+  .stats-table th{color:var(--text2);font-weight:600;font-size:11px}
+  .stats-table td:first-child,.stats-table th:first-child{text-align:left;padding-left:0}
+  /* Export */
+  .export-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:11px;font-family:monospace;white-space:pre;overflow-x:auto;max-height:180px;color:var(--text2)}
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+  .modal{background:var(--bg);border-radius:20px 20px 0 0;padding:20px 16px 34px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto}
+  .modal-title{font-size:17px;font-weight:700;margin-bottom:14px}
+  .hidden{display:none}
+  /* Utility */
+  .section-subtitle{font-size:12px;color:var(--text2);margin-bottom:6px}
+  .divider{height:1px;background:var(--border);margin:10px 0}
+  .undo-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .flash{animation:flash .4s ease}
+  @keyframes flash{0%,100%{opacity:1}50%{opacity:.3}}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--blue-bg);color:var(--blue-text)}
+  /* Pages */
+  .page{display:none}
+  .page.active{display:block;padding-bottom:30px}
+  /* Inning history */
+  .inn-hist-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .inn-hist-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<div class="hdr">
+  <span class="hdr-title">⚾ Scorekeeper</span>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('game')">Game</div>
+    <div class="tab" onclick="showPage('lineup')">Lineup</div>
+    <div class="tab" onclick="showPage('box')">Box</div>
+  </div>
+</div>
+
+<!-- GAME PAGE -->
+<div class="page active" id="page-game">
+
+  <div class="score-strip">
+    <div class="team-score" id="score-home">
+      <div class="team-name-disp" id="home-name-disp">Home</div>
+      <div class="team-runs" id="home-runs-disp">0</div>
+    </div>
+    <div class="vs-box">
+      <div class="inning-num" id="inning-disp">1st</div>
+      <div class="inning-half" id="half-disp">Top ▲</div>
+    </div>
+    <div class="team-score" id="score-away">
+      <div class="team-name-disp" id="away-name-disp">Away</div>
+      <div class="team-runs" id="away-runs-disp">0</div>
+    </div>
+  </div>
+
+  <div id="inning-status" style="display:none;margin:6px 12px 0;padding:9px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;text-align:center"></div>
+
+  <div class="card">
+    <div class="toggle-team">
+      <button id="btn-home-team" class="active" onclick="setActiveTeam('home')">🏠 Home batting</button>
+      <button id="btn-away-team" onclick="setActiveTeam('away')">✈️ Away batting</button>
+    </div>
+    <div class="undo-row">
+      <div style="font-size:13px">
+        <span id="batting-team-label" style="font-weight:600">Home</span>
+        <span style="color:var(--text2)"> at bat</span>
+      </div>
+      <button class="btn btn-xs btn-warning" onclick="undoInning()">← Undo half-inning</button>
+    </div>
+
+    <!-- Count + Bases -->
+    <div class="count-section">
+      <div class="counts-col">
+        <div class="count-row">
+          <span class="count-label">Balls</span>
+          <div class="dots" id="ball-dots"></div>
+        </div>
+        <div class="count-row">
+          <span class="count-label">Strikes</span>
+          <div class="dots" id="strike-dots"></div>
+        </div>
+        <div class="count-row">
+          <span class="count-label">Outs</span>
+          <div class="dots" id="out-dots"></div>
+        </div>
+      </div>
+      <div class="diamond-wrap">
+        <div class="bases">
+          <div class="base b2" id="base-2" onclick="toggleBase(2)"></div>
+          <div class="base b3" id="base-3" onclick="toggleBase(3)"></div>
+          <div class="base b1" id="base-1" onclick="toggleBase(1)"></div>
+          <div class="home-base" id="base-h" onclick="scoreRun()"></div>
+        </div>
+        <div class="base-hint">Tap base = runner<br>Tap ⬜ = score run</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+      <button class="btn-count btn-count-ball" onclick="addBall()">+ Ball</button>
+      <button class="btn-count btn-count-strike" onclick="addStrike()">+ Strike</button>
+      <button class="btn-count btn-count-out" onclick="addOut()">+ Out</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="curr-batter-row">
+      <div>
+        <div class="curr-batter-label">Current batter</div>
+        <div class="curr-batter-name" id="curr-batter-name">— no lineup —</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="nextBatter()">Next ›</button>
+    </div>
+    <div class="action-grid">
+      <div class="abtn hit" onclick="recordPA('1B')">Single</div>
+      <div class="abtn hit" onclick="recordPA('2B')">Double</div>
+      <div class="abtn hit" onclick="recordPA('3B')">Triple</div>
+      <div class="abtn hit" onclick="recordPA('HR')">Home Run</div>
+      <div class="abtn walk" onclick="recordPA('BB')">Walk</div>
+      <div class="abtn walk" onclick="recordPA('HBP')">HBP</div>
+      <div class="abtn out" onclick="recordPA('K')">Strikeout</div>
+      <div class="abtn out" onclick="recordPA('GO')">Ground Out</div>
+      <div class="abtn out" onclick="recordPA('FO')">Fly Out</div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn btn-success" style="width:100%;padding:11px" onclick="endHalf()">End half-inning →</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">At-bat log</div>
+    <div class="pa-log" id="pa-log">
+      <div style="font-size:12px;color:var(--text2)">No at-bats recorded yet.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Score a run manually</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-success" onclick="scoreRun()">+ Run for <span id="run-team-label">Home</span></button>
+      <span style="font-size:12px;color:var(--text2)">or tap the ⬜ home plate above</span>
+    </div>
+  </div>
+</div>
+
+<!-- LINEUP PAGE -->
+<div class="page" id="page-lineup">
+  <div class="card">
+    <div class="card-title">Team names</div>
+    <div class="input-row">
+      <input type="text" id="home-name-input" placeholder="Home team name" value="Home" oninput="updateNames()">
+      <input type="text" id="away-name-input" placeholder="Away team name" value="Away" oninput="updateNames()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toggle-team" style="margin-bottom:10px">
+      <button id="lineup-btn-home" class="active" onclick="setLineupView('home')">🏠 Home lineup</button>
+      <button id="lineup-btn-away" onclick="setLineupView('away')">✈️ Away lineup</button>
+    </div>
+    <div class="card-title" id="lineup-view-title">Home lineup</div>
+    <div id="lineup-list"></div>
+    <div class="divider"></div>
+    <div class="section-subtitle">Quick batting order entry</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px">
+      Numbers only, or add name and position — all optional. One per line or semicolons.<br>
+      <em>12 &nbsp;|&nbsp; 12, Jake R. &nbsp;|&nbsp; 12, Jake R., CF</em><br>
+      Just numbers: <em>7, 12, 3, 5, 22, 8, 14, 9, 1</em>
+    </div>
+    <textarea id="quick-order-input" placeholder="Numbers only:&#10;7, 12, 3, 5, 22&#10;&#10;Or with names:&#10;12, Jake R., CF&#10;7, Maria S., SS" style="width:100%;height:110px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;resize:vertical"></textarea>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="parseQuickLineup()">⚡ Generate batting order</button>
+      <button class="btn btn-sm" onclick="el('quick-order-input').value=''">Clear</button>
+    </div>
+    <div id="quick-order-feedback" style="font-size:12px;margin-top:6px;min-height:16px"></div>
+
+    <div class="divider"></div>
+    <div class="section-subtitle">Add single player</div>
+    <div class="input-row">
+      <input type="text" id="new-player-name" placeholder="Player name" style="flex:2">
+      <input type="text" id="new-player-pos" placeholder="Pos" style="flex:1;max-width:70px">
+      <button class="btn btn-primary" onclick="addPlayer()">Add</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn btn-sm" onclick="loadSampleLineup()">Load sample lineup</button>
+      <button class="btn btn-sm btn-danger" onclick="clearLineup()">Clear lineup</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text2)">
+      Use ↑↓ to reorder batting order. Tap ✕ to remove a player.
+    </div>
+  </div>
+</div>
+
+<!-- BOX SCORE PAGE -->
+<div class="page" id="page-box">
+  <div class="card">
+    <div class="card-title">Inning-by-inning</div>
+    <div class="box-scroll" id="box-grid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Home batting stats</div>
+    <div id="home-stats"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Away batting stats</div>
+    <div id="away-stats"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">At-bat history — all innings</div>
+    <div class="pa-log" id="full-pa-log" style="max-height:200px"></div>
+  </div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Export / Email</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
+      Tap Copy CSV, then paste into Notes, Mail, or Excel. On iPhone you can also use "Share" in Notes to email as an attachment.
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-primary" onclick="exportCSV()">📋 Copy CSV</button>
+      <button class="btn btn-sm btn-danger" onclick="resetGame()">🗑 Reset game</button>
+    </div>
+    <div class="export-box" id="export-preview"></div>
+  </div>
+</div>
+<!-- Startup modal -->
+<div id="start-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--radius);padding:24px 20px;max-width:340px;width:100%;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">⚾</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px">Game in progress</div>
+    <div id="resume-info" style="font-size:13px;color:var(--text2);margin-bottom:20px;min-height:18px"></div>
+    <button onclick="resumeGame()" style="width:100%;padding:14px;border-radius:var(--radius-sm);border:none;background:var(--blue-bg);color:var(--blue-text);font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px">Continue game</button>
+    <button onclick="startNewGame()" style="width:100%;padding:14px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg2);color:var(--text);font-size:16px;font-weight:600;cursor:pointer">New game</button>
+  </div>
+</div>
+
+</div><!-- end .app -->
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const POSITIONS = ['','P','C','1B','2B','3B','SS','LF','CF','RF','DH'];
+const ORDINALS = ['','1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th'];
+
+let S = {
+  homeName:'Home', awayName:'Away',
+  activeTeam:'home',
+  inning:1, half:'top',
+  balls:0, strikes:0, outs:0,
+  bases:{1:false,2:false,3:false},
+  home:{runs:0, lineup:[], currentBatterIdx:0, paLog:[], innings:Array(15).fill(null).map(()=>({runs:0}))},
+  away:{runs:0, lineup:[], currentBatterIdx:0, paLog:[], innings:Array(15).fill(null).map(()=>({runs:0}))},
+  history:[],
+  lineupView:'home'
+};
+
+function freshState(){
+  return {
+    homeName:'Home', awayName:'Away',
+    activeTeam:'home',
+    inning:1, half:'top',
+    balls:0, strikes:0, outs:0,
+    bases:{1:false,2:false,3:false},
+    home:{runs:0, lineup:[], currentBatterIdx:0, paLog:[], innings:Array(15).fill(null).map(()=>({runs:0}))},
+    away:{runs:0, lineup:[], currentBatterIdx:0, paLog:[], innings:Array(15).fill(null).map(()=>({runs:0}))},
+    history:[],
+    lineupView:'home'
+  };
+}
+
+function save(){try{localStorage.setItem('bb_v2',JSON.stringify(S))}catch(e){}}
+
+function loadSave(){
+  try{
+    const d=localStorage.getItem('bb_v2');
+    if(d){
+      const parsed=JSON.parse(d);
+      if(!parsed.home.innings||parsed.home.innings.length<15)parsed.home.innings=Array(15).fill(null).map((_,i)=>parsed.home.innings&&parsed.home.innings[i]?parsed.home.innings[i]:{runs:0});
+      if(!parsed.away.innings||parsed.away.innings.length<15)parsed.away.innings=Array(15).fill(null).map((_,i)=>parsed.away.innings&&parsed.away.innings[i]?parsed.away.innings[i]:{runs:0});
+      // Check if the saved game has any real activity
+      const hasActivity = parsed.inning > 1 || parsed.half !== 'top' ||
+        parsed.home.runs > 0 || parsed.away.runs > 0 ||
+        parsed.home.paLog.length > 0 || parsed.away.paLog.length > 0 ||
+        parsed.home.lineup.length > 0 || parsed.away.lineup.length > 0;
+      if(hasActivity){
+        showStartModal(parsed);
+        return;
+      }
+    }
+  }catch(e){}
+  renderAll();
+}
+
+function showStartModal(saved){
+  const ord = ORDINALS[saved.inning]||saved.inning+'th';
+  const half = saved.half==='top'?'Top':'Bottom';
+  const hR = saved.home.runs, aR = saved.away.runs;
+  const hN = saved.homeName||'Home', aN = saved.awayName||'Away';
+  el('resume-info').textContent = `${hN} ${hR} – ${aR} ${aN} · ${ord} inning, ${half}`;
+  el('start-modal').style.display='flex';
+}
+
+function resumeGame(){
+  try{
+    const d=localStorage.getItem('bb_v2');
+    if(d){
+      const parsed=JSON.parse(d);
+      if(!parsed.home.innings||parsed.home.innings.length<15)parsed.home.innings=Array(15).fill(null).map((_,i)=>parsed.home.innings&&parsed.home.innings[i]?parsed.home.innings[i]:{runs:0});
+      if(!parsed.away.innings||parsed.away.innings.length<15)parsed.away.innings=Array(15).fill(null).map((_,i)=>parsed.away.innings&&parsed.away.innings[i]?parsed.away.innings[i]:{runs:0});
+      S=parsed;
+    }
+  }catch(e){}
+  el('start-modal').style.display='none';
+  renderAll();
+}
+
+function startNewGame(){
+  S=freshState();
+  save();
+  el('start-modal').style.display='none';
+  renderAll();
+}
+
+function team(side){return S[side||S.activeTeam]}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function renderAll(){
+  renderScores();renderCount();renderBases();renderCurrentBatter();renderPALog();
+  renderLineup();renderBox();renderRunLabel();
+}
+
+function renderScores(){
+  el('home-runs-disp').textContent=S.home.runs;
+  el('away-runs-disp').textContent=S.away.runs;
+  el('home-name-disp').textContent=S.homeName;
+  el('away-name-disp').textContent=S.awayName;
+  el('batting-team-label').textContent=S.activeTeam==='home'?S.homeName:S.awayName;
+  el('inning-disp').textContent=ORDINALS[S.inning]||S.inning+'th';
+  el('half-disp').textContent=S.half==='top'?'Top ▲':'Bot ▼';
+  el('score-home').className='team-score'+(S.activeTeam==='home'?' batting':'');
+  el('score-away').className='team-score'+(S.activeTeam==='away'?' batting':'');
+  el('btn-home-team').className=S.activeTeam==='home'?'active':'';
+  el('btn-away-team').className=S.activeTeam==='away'?'active':'';
+  el('home-name-input').value=S.homeName;
+  el('away-name-input').value=S.awayName;
+}
+
+function renderRunLabel(){
+  const spans=document.querySelectorAll('#run-team-label');
+  spans.forEach(s=>s.textContent=S.activeTeam==='home'?S.homeName:S.awayName);
+}
+
+function renderCount(){
+  renderDots('ball-dots',4,S.balls,'ball');
+  renderDots('strike-dots',3,S.strikes,'strike');
+  renderDots('out-dots',3,S.outs,'out');
+}
+
+function renderDots(id,total,filled,type){
+  const c=el(id);c.innerHTML='';
+  for(let i=0;i<total;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i<filled?' '+type:'');
+    d.onclick=(function(idx){return function(){
+      if(type==='ball'){S.balls=idx<S.balls?idx:idx+1;if(S.balls>=4){recordPA('BB');return}}
+      else if(type==='strike'){S.strikes=idx<S.strikes?idx:idx+1;if(S.strikes>=3){recordPA('K');return}}
+      save();renderCount();
+    }})(i);
+    c.appendChild(d);
+  }
+}
+
+function renderBases(){
+  [1,2,3].forEach(b=>el('base-'+b).className='base b'+b+(S.bases[b]?' on':''));
+}
+
+function renderCurrentBatter(){
+  const t=team();
+  const b=t.lineup[t.currentBatterIdx];
+  el('curr-batter-name').textContent=b?`#${t.currentBatterIdx+1} ${b.name}${b.pos?' ('+b.pos+')':''}`:'— add players in Lineup tab —';
+}
+
+function renderPALog(){
+  const t=team();
+  const container=el('pa-log');
+  if(!t.paLog.length){container.innerHTML='<div style="font-size:12px;color:var(--text2)">No at-bats recorded yet.</div>';return}
+  container.innerHTML=t.paLog.slice().reverse().map(e=>{
+    const cls=['1B','2B','3B','HR'].includes(e.result)?'pill-hit':['BB','HBP'].includes(e.result)?'pill-bb':'pill-out';
+    return `<div class="pa-entry"><span style="min-width:52px;color:var(--text3)">Inn ${e.inning}${e.half==='top'?'▲':'▼'}</span><span style="flex:1">${e.name}</span><span class="pill ${cls}">${e.result}</span></div>`;
+  }).join('');
+}
+
+function renderLineup(){
+  const t=S[S.lineupView];
+  const isActive=S.lineupView===S.activeTeam;
+  el('lineup-view-title').textContent=(S.lineupView==='home'?S.homeName:S.awayName)+' lineup';
+  el('lineup-btn-home').className=S.lineupView==='home'?'active':'';
+  el('lineup-btn-away').className=S.lineupView==='away'?'active':'';
+  const container=el('lineup-list');
+  if(!t.lineup.length){container.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0">No players. Add below or load sample.</div>';return}
+  container.innerHTML=t.lineup.map((p,i)=>`
+    <div class="lineup-row${isActive&&i===t.currentBatterIdx?' active-batter':''}">
+      <span class="batter-num">${i+1}</span>
+      <input class="name-input" type="text" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name or #"
+        onchange="renameBatter('${S.lineupView}',${i},this.value)"
+        onblur="renameBatter('${S.lineupView}',${i},this.value)">
+      <select class="pos-select" onchange="setPos('${S.lineupView}',${i},this.value)">
+        ${POSITIONS.map(pos=>`<option${p.pos===pos?' selected':''}>${pos}</option>`).join('')}
+      </select>
+      <span class="batter-stat">${p.h||0}-${p.ab||0}</span>
+      <button class="btn btn-xs" onclick="movePlayer('${S.lineupView}',${i},-1)">↑</button>
+      <button class="btn btn-xs" onclick="movePlayer('${S.lineupView}',${i},1)">↓</button>
+      <button class="btn btn-xs btn-danger" onclick="removePlayer('${S.lineupView}',${i})">✕</button>
+    </div>`).join('');
+}
+
+function renderBox(){
+  const maxInn=Math.max(9,S.inning);
+  // Inning grid
+  let html='<table class="box-table"><thead><tr><th>Team</th>';
+  for(let i=1;i<=maxInn;i++)html+=`<th${i===S.inning?' class="active-inn"':''}>${i}</th>`;
+  html+='<th>R</th></tr></thead><tbody>';
+  ['home','away'].forEach(side=>{
+    const t=S[side];
+    let tot=0;
+    html+=`<tr><td>${side==='home'?S.homeName:S.awayName}</td>`;
+    for(let i=1;i<=maxInn;i++){
+      const r=t.innings[i-1]?t.innings[i-1].runs:0;tot+=r;
+      html+=`<td${i===S.inning?' class="active-inn"':''}>${r||''}</td>`;
+    }
+    html+=`<td class="total-col">${tot}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  el('box-grid').innerHTML=html;
+  renderBattingStats('home');
+  renderBattingStats('away');
+  renderFullPALog();
+  renderExportPreview();
+}
+
+function renderBattingStats(side){
+  const t=S[side];
+  const container=el(side+'-stats');
+  if(!t.lineup.length){container.innerHTML='<div style="font-size:12px;color:var(--text2)">No lineup loaded.</div>';return}
+  let html='<table class="stats-table"><thead><tr><th>Player</th><th>Pos</th><th>AB</th><th>H</th><th>AVG</th><th>R</th><th>RBI</th><th>HR</th></tr></thead><tbody>';
+  let totAB=0,totH=0,totR=0,totRBI=0,totHR=0;
+  t.lineup.forEach(p=>{
+    const ab=p.ab||0,h=p.h||0,r=p.runs||0,rbi=p.rbi||0,hr=p.hr||0;
+    const avg=ab>0?(h/ab).toFixed(3).replace('0.','.'):'.000';
+    totAB+=ab;totH+=h;totR+=r;totRBI+=rbi;totHR+=hr;
+    html+=`<tr><td>${p.name}</td><td>${p.pos||''}</td><td>${ab}</td><td>${h}</td><td>${avg}</td><td>${r}</td><td>${rbi}</td><td>${hr}</td></tr>`;
+  });
+  const tavg=totAB>0?(totH/totAB).toFixed(3).replace('0.','.'):'.000';
+  html+=`<tr style="font-weight:600;border-top:2px solid var(--border2)"><td>Total</td><td></td><td>${totAB}</td><td>${totH}</td><td>${tavg}</td><td>${totR}</td><td>${totRBI}</td><td>${totHR}</td></tr>`;
+  html+='</tbody></table>';
+  container.innerHTML=html;
+}
+
+function renderFullPALog(){
+  const all=[...S.home.paLog.map(e=>({...e,side:'home'})),...S.away.paLog.map(e=>({...e,side:'away'}))];
+  all.sort((a,b)=>a.inning-b.inning||(a.half==='top'?-1:1));
+  const container=el('full-pa-log');
+  if(!all.length){container.innerHTML='<div style="font-size:12px;color:var(--text2)">No at-bats yet.</div>';return}
+  container.innerHTML=all.map(e=>{
+    const cls=['1B','2B','3B','HR'].includes(e.result)?'pill-hit':['BB','HBP'].includes(e.result)?'pill-bb':'pill-out';
+    const sideName=e.side==='home'?S.homeName:S.awayName;
+    return `<div class="pa-entry"><span style="min-width:52px;color:var(--text3)">Inn ${e.inning}${e.half==='top'?'▲':'▼'}</span><span style="min-width:50px;color:var(--text2);font-size:11px">${sideName}</span><span style="flex:1">${e.name}</span><span class="pill ${cls}">${e.result}</span></div>`;
+  }).join('');
+}
+
+function renderExportPreview(){
+  const maxInn=Math.max(9,S.inning);
+  const lines=[`Baseball Game Export`,'Date: '+new Date().toLocaleDateString(),'','=== SCORING ==='];
+  lines.push('Team,'+Array.from({length:maxInn},(_,i)=>'Inn '+(i+1)).join(',')+',Total Runs');
+  ['home','away'].forEach(side=>{
+    const t=S[side];
+    let tot=0;
+    const cols=Array.from({length:maxInn},(_,i)=>{const r=t.innings[i]?t.innings[i].runs:0;tot+=r;return r});
+    lines.push(`${side==='home'?S.homeName:S.awayName},${cols.join(',')},${tot}`);
+  });
+  lines.push('','=== BATTING STATS ===');
+  lines.push('Team,Player,Pos,AB,H,AVG,R,RBI,HR');
+  ['home','away'].forEach(side=>{
+    const t=S[side];
+    t.lineup.forEach(p=>{
+      const ab=p.ab||0,h=p.h||0;
+      const avg=ab>0?(h/ab).toFixed(3):'.000';
+      lines.push(`${side==='home'?S.homeName:S.awayName},${p.name},${p.pos||''},${ab},${h},${avg},${p.runs||0},${p.rbi||0},${p.hr||0}`);
+    });
+  });
+  lines.push('','=== AT-BAT LOG ===');
+  lines.push('Inning,Half,Team,Player,Result');
+  [...S.home.paLog.map(e=>({...e,side:'home'})),...S.away.paLog.map(e=>({...e,side:'away'}))]
+    .sort((a,b)=>a.inning-b.inning)
+    .forEach(e=>lines.push(`${e.inning},${e.half==='top'?'Top':'Bot'},${e.side==='home'?S.homeName:S.awayName},${e.name},${e.result}`));
+  el('export-preview').textContent=lines.join('\n');
+}
+
+function exportCSV(){
+  const text=el('export-preview').textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>alert('✅ Copied! Paste into Notes, Mail, or Excel on your iPhone.'),()=>manualCopy(text));
+  } else {manualCopy(text)}
+}
+function manualCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');alert('✅ Copied to clipboard!');}catch(e){alert('Could not auto-copy. Please manually select and copy the text below.');}
+  document.body.removeChild(ta);
+}
+
+// ─── Game actions ─────────────────────────────────────────────────────────────
+function setActiveTeam(side){
+  S.activeTeam=side;S.balls=0;S.strikes=0;
+  renderAll();save();
+}
+
+function addBall(){
+  S.balls=Math.min(4,S.balls+1);
+  if(S.balls>=4){recordPA('BB')}else{save();renderCount()}
+}
+
+function addStrike(){
+  S.strikes=Math.min(3,S.strikes+1);
+  if(S.strikes>=3){recordPA('K')}else{save();renderCount()}
+}
+
+function addOut(){
+  S.outs=Math.min(3,S.outs+1);
+  S.balls=0;S.strikes=0;
+  nextBatter();
+  renderCount();
+  if(S.outs>=3){endHalf();}
+}
+
+function toggleBase(b){
+  S.bases[b]=!S.bases[b];
+  renderBases();save();
+}
+
+function scoreRun(){
+  team().runs++;
+  const t=team();
+  const b=t.lineup[t.currentBatterIdx];
+  if(b){b.runs=(b.runs||0)+1}
+  const homeEl=el('base-h');
+  homeEl.classList.add('scored-flash');
+  setTimeout(()=>homeEl.classList.remove('scored-flash'),400);
+  renderScores();renderBox();save();
+}
+
+function nextBatter(){
+  const t=team();
+  S.balls=0;S.strikes=0;
+  if(t.lineup.length){t.currentBatterIdx=(t.currentBatterIdx+1)%t.lineup.length}
+  renderCurrentBatter();renderCount();save();
+}
+
+function recordPA(result){
+  const t=team();
+  const b=t.lineup[t.currentBatterIdx];
+  const isHit=['1B','2B','3B','HR'].includes(result);
+  const isOut=['K','GO','FO','DP','FC'].includes(result);
+  const isAB=!['BB','HBP'].includes(result);
+  if(b){
+    if(isAB)b.ab=(b.ab||0)+1;
+    if(isHit)b.h=(b.h||0)+1;
+    if(result==='HR'){b.hr=(b.hr||0)+1;b.rbi=(b.rbi||0)+1;b.runs=(b.runs||0)+1;t.runs++;}
+    t.paLog.push({name:b.name,result,inning:S.inning,half:S.half});
+  }
+  if(isOut){
+    S.outs++;S.balls=0;S.strikes=0;
+    nextBatter();
+    renderCount();renderPALog();renderScores();renderBox();save();
+    if(S.outs>=3){endHalf();}
+    return;
+  }
+  S.balls=0;S.strikes=0;
+  nextBatter();
+  renderCount();renderPALog();renderScores();renderBox();save();
+}
+
+function showStatus(msg,type){
+  var el2=el('inning-status');
+  if(!el2)return;
+  el2.textContent=msg;
+  el2.style.background=type==='success'?'var(--green-bg)':type==='warn'?'var(--orange-bg)':'var(--blue-bg)';
+  el2.style.color=type==='success'?'var(--green-text)':type==='warn'?'var(--orange-text)':'var(--blue-text)';
+  el2.style.display='block';
+  clearTimeout(el2._t);
+  el2._t=setTimeout(()=>{el2.style.display='none';},3500);
+}
+
+function endHalf(){
+  saveSnapshot();
+  const battingSide=S.activeTeam;
+  const t=S[battingSide];
+  const prevRuns=t.innings.slice(0,S.inning-1).reduce((a,c)=>a+(c?c.runs:0),0);
+  if(!t.innings[S.inning-1])t.innings[S.inning-1]={runs:0};
+  t.innings[S.inning-1].runs=t.runs-prevRuns;
+  S.balls=0;S.strikes=0;S.outs=0;S.bases={1:false,2:false,3:false};
+  if(S.half==='top'){
+    S.half='bot';
+    S.activeTeam=S.activeTeam==='home'?'away':'home';
+  } else {
+    S.half='top';
+    S.inning++;
+    S.activeTeam=S.activeTeam==='home'?'away':'home';
+  }
+  renderAll();save();
+  const ord=ORDINALS[S.inning]||S.inning+'th';
+  showStatus('3 outs — '+ord+' inning, '+(S.half==='top'?'Top':'Bottom')+'. '+(S.activeTeam==='home'?S.homeName:S.awayName)+' batting.','success');
+}
+
+function saveSnapshot(){
+  S.history.push(JSON.stringify({
+    activeTeam:S.activeTeam,inning:S.inning,half:S.half,
+    balls:S.balls,strikes:S.strikes,outs:S.outs,
+    bases:JSON.parse(JSON.stringify(S.bases)),
+    home:JSON.parse(JSON.stringify(S.home)),
+    away:JSON.parse(JSON.stringify(S.away))
+  }));
+  if(S.history.length>20)S.history.shift();
+}
+
+function undoInning(){
+  if(!S.history.length){alert('Nothing to undo yet.');return}
+  if(!confirm('Restore game to the previous half-inning? All stats from that half-inning will be restored.'))return;
+  const snap=JSON.parse(S.history.pop());
+  S.activeTeam=snap.activeTeam;S.inning=snap.inning;S.half=snap.half;
+  S.balls=snap.balls;S.strikes=snap.strikes;S.outs=snap.outs;S.bases=snap.bases;
+  S.home=snap.home;S.away=snap.away;
+  renderAll();save();
+}
+
+function resetGame(){
+  if(!confirm('Reset the entire game? All data will be cleared.'))return;
+  startNewGame();
+}
+
+// ─── Lineup management ───────────────────────────────────────────────────────
+function addPlayer(){
+  const name=el('new-player-name').value.trim();
+  const pos=el('new-player-pos').value.trim().toUpperCase();
+  if(!name)return;
+  S[S.lineupView].lineup.push({name,pos,ab:0,h:0,runs:0,rbi:0,hr:0});
+  el('new-player-name').value='';el('new-player-pos').value='';
+  renderLineup();renderCurrentBatter();save();
+}
+
+function removePlayer(side,i){
+  S[side].lineup.splice(i,1);
+  if(S[side].currentBatterIdx>=S[side].lineup.length)S[side].currentBatterIdx=0;
+  renderLineup();renderCurrentBatter();save();
+}
+
+function setPos(side,i,pos){
+  S[side].lineup[i].pos=pos;renderLineup();save();
+}
+
+function renameBatter(side,i,val){
+  val=val.trim();
+  if(!val)return;
+  S[side].lineup[i].name=val;
+  renderCurrentBatter();save();
+}
+
+function movePlayer(side,i,dir){
+  const l=S[side].lineup;const j=i+dir;
+  if(j<0||j>=l.length)return;
+  [l[i],l[j]]=[l[j],l[i]];
+  renderLineup();save();
+}
+
+function setLineupView(side){
+  S.lineupView=side;renderLineup();
+}
+
+function loadSampleLineup(){
+  const samples=[['Alex M.','CF'],['Jordan B.','SS'],['Casey R.','1B'],['Morgan T.','3B'],['Riley P.','LF'],['Taylor S.','RF'],['Sam K.','2B'],['Chris H.','C'],['Pat D.','P']];
+  S[S.lineupView].lineup=samples.map(([name,pos])=>({name,pos,ab:0,h:0,runs:0,rbi:0,hr:0}));
+  S[S.lineupView].currentBatterIdx=0;
+  renderLineup();renderCurrentBatter();save();
+}
+
+function clearLineup(){
+  if(!confirm(`Clear ${S.lineupView} lineup?`))return;
+  S[S.lineupView].lineup=[];S[S.lineupView].currentBatterIdx=0;
+  renderLineup();renderCurrentBatter();save();
+}
+
+function parseQuickLineup(){
+  const raw=el('quick-order-input').value.trim();
+  const fb=el('quick-order-feedback');
+  if(!raw){fb.style.color='var(--red-text)';fb.textContent='No input found.';return}
+
+  // Split on newlines or semicolons first
+  var lines=raw.split(/[\n;]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var tokens=[];
+
+  // Each line may itself be a comma-separated list of bare numbers like "7, 12, 3"
+  // or a structured entry like "12, Jake R., CF"
+  lines.forEach(function(line){
+    var parts=line.split(',').map(function(s){return s.trim();});
+    // If every part is a bare number → treat each as its own entry
+    if(parts.every(function(p){return /^\d+$/.test(p);})){
+      parts.forEach(function(p){tokens.push(p);});
+    } else {
+      tokens.push(line);
+    }
+  });
+
+  var players=[];var errors=[];
+  tokens.forEach(function(entry,i){
+    var parts=entry.split(',').map(function(s){return s.trim();});
+    var num=null,name='',pos='';
+
+    if(parts.length===1){
+      // Could be bare number "12" or bare name "Jake R."
+      if(/^\d+$/.test(parts[0])){
+        num=parseInt(parts[0],10);
+        name='#'+num; // placeholder
+      } else {
+        name=parts[0];
+      }
+    } else if(parts.length===2){
+      if(/^\d+$/.test(parts[0])){
+        // "12, Jake R."  or  "12, CF" (short = position)
+        num=parseInt(parts[0],10);
+        var second=parts[1];
+        if(/^[A-Z0-9]{1,3}$/.test(second)&&second.length<=2){
+          // looks like a position code
+          name='#'+num; pos=second;
+        } else {
+          name=second;
+        }
+      } else {
+        // "Jake R., CF"
+        name=parts[0];
+        pos=parts[1].toUpperCase();
+      }
+    } else if(parts.length>=3){
+      // "12, Jake R., CF"
+      if(/^\d+$/.test(parts[0])){
+        num=parseInt(parts[0],10);
+        name=parts[1];
+        pos=parts[2].toUpperCase();
+      } else {
+        // no number — "Jake R., SS, something" — take first two
+        name=parts[0];pos=parts[1].toUpperCase();
+      }
+    }
+
+    name=name.trim();pos=pos.trim();
+    if(!name){errors.push('Entry '+(i+1)+' skipped');return;}
+    players.push({num:num,name:name,pos:pos,ab:0,h:0,runs:0,rbi:0,hr:0});
+  });
+
+  if(!players.length){fb.style.color='var(--red-text)';fb.textContent='No valid entries found. Check format.';return;}
+
+  // Sort by jersey number only if ALL entries have one
+  var allHaveNums=players.every(function(p){return p.num!==null;});
+  if(allHaveNums)players.sort(function(a,b){return a.num-b.num;});
+
+  var existing=S[S.lineupView].lineup;
+  var added=[];
+  players.forEach(function(p){
+    var dupe=existing.find(function(e){
+      return e.name.toLowerCase()===p.name.toLowerCase()||
+             (p.num!==null&&e.num===p.num);
+    });
+    if(!dupe){existing.push(p);added.push(p.name);}
+  });
+
+  renderLineup();renderCurrentBatter();save();
+  var warn=errors.length?' ('+errors.length+' skipped)':'';
+  if(added.length){
+    fb.style.color='var(--green-text)';
+    fb.textContent='Added '+added.length+' player'+(added.length>1?'s':'')+'.'+warn+' Names can be edited in the list above.';
+    el('quick-order-input').value='';
+  } else {
+    fb.style.color='var(--orange-text)';
+    fb.textContent='All entries already in lineup.'+warn;
+  }
+}
+
+function updateNames(){
+  S.homeName=el('home-name-input').value||'Home';
+  S.awayName=el('away-name-input').value||'Away';
+  renderScores();renderLineup();save();
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function showPage(p){
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['game','lineup','box'][i]===p));
+  el('page-'+p).classList.add('active');
+  if(p==='box')renderBox();
+  if(p==='lineup')renderLineup();
+}
+
+// ─── Utility ─────────────────────────────────────────────────────────────────
+function el(id){return document.getElementById(id)}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+loadSave();
+</script>
+</body>
+</html>
